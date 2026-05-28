@@ -1,0 +1,452 @@
+\documentclass{article}
+
+
+\usepackage{PRIMEarxiv}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{lipsum}
+\usepackage{fancyhdr}       % header
+\usepackage{graphicx} 
+\usepackage{subcaption} % para subfiguras      % graphics
+\usepackage[hidelinks]{hyperref}
+\usepackage{orcidlink}
+\graphicspath{{media/}}     % organize your images and other figures under media/ folder
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+\usepackage{tikz}
+\usepackage{placeins}
+\usetikzlibrary{shapes.geometric, arrows, positioning, fit, backgrounds}
+
+\tikzstyle{start} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=green!30]
+\tikzstyle{stop} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30]
+\tikzstyle{process} = [rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=orange!30]
+\tikzstyle{decision} = [diamond, aspect=2, minimum width=2cm, minimum height=1cm, text centered, draw=black, fill=green!30]
+\tikzstyle{io} = [trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=blue!30]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+
+%Header
+\pagestyle{fancy}
+\thispagestyle{empty}
+\rhead{ \textit{ }} 
+
+% Update your Headers here
+\fancyhead[LO]{Mahlow et al. 2024}
+% \fancyhead[RE]{Firstauthor and Secondauthor} % Firstauthor et al. if more than 2 - must use \documentclass[twoside]{article}
+
+
+
+  
+%% Title
+\title{SHPM - A Segmented Human Proportions Metric for Face Analysis and Representation
+%%%% Cite as
+%%%% Update your official citation here when published 
+%\thanks{\textit{\underline{Citation}}: 
+%\textbf{Authors. Title. Pages.... DOI:000000/11111.}} 
+}
+
+\author{
+  Felipe Mahlow \orcidlink{0000-0001-9816-1440}\\
+  São Paulo State University\\
+  Bauru, Brazil\\
+  \texttt{f.mahlow@unesp.br} \\
+  \And
+  Giovanni Franco \orcidlink{0009-0002-8588-8979}\\
+  São Paulo State University\\
+  Bauru, Brazil\\
+\texttt{gs.franco@unesp.br}
+  \And
+  Guilherme Fiusa \orcidlink{0000-0002-2390-7823}\\
+  University of Rochester\\
+  New York, United States\\
+\texttt{gfiusa@ur.rochester.edu}
+  \And
+   \\
+  %% examples of more authors
+   \And
+   Kelton Augusto Pontara da Costa \orcidlink{0000-0001-5458-3908}\\
+  São Paulo State University\\
+  Bauru, Brazil\\
+  \texttt{kelton.costa@unesp.br} \\
+  %% \AND
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+}
+
+
+\begin{document}
+\maketitle
+
+
+
+\begin{abstract}
+In this paper, we introduce a novel method called the Segmented Human Proportions Metric (SHPM) for feature representation in image-based human body/face analysis. Our approach leverages the new Segment Anything Model (SAM) by meta, to extract various human body polygons and calculate relative proportions between them. By focusing on proportional relationships, such as the ratio between facial features, SHPM provides a robust, interpretable vector of proportions that captures human essential characteristics. This metric offers an innovative tool for a range of applications, including identity verification, biometric analysis, and potentially ethnicity-related studies. We demonstrate its versatility and effectiveness through experiments, showing how it can be used to accurately represent physical attributes while maintaining invariance to scale and perspective distortions. Our results indicate that SHPM is a valuable addition to feature extraction techniques, providing a clear and quantitative means of analyzing human proportions in a structured manner.
+
+
+
+\end{abstract}
+
+
+
+% keywords can be removed
+\keywords{Inpainting \and Diffusion Models \and Latent Consistency Models \and Text-to-image Generation \and Generative Artificial Intelligence \and Computer Vision}
+
+
+\section{Introduction}
+\label{introduction}
+
+The analysis of human body and facial proportions is foundational in disciplines spanning biometrics, healthcare, demographic studies, and anthropology. In image-based applications, such as identity verification, biometric recognition, and comparative demographic analysis, there is a persistent need for quantitative, robust, and scalable methods capable of representing and comparing physical characteristics in a standardized manner. Facial features hold particular significance in these tasks due to their high distinctiveness and role in demographic and identity classification applications.
+
+While recent advances in artificial intelligence, particularly in deep learning models, have enabled remarkable accuracy in facial recognition, object detection, and human feature extraction, many of these models operate as “black boxes.” For example, complex neural network-based models can achieve superior performance in tasks like facial recognition, object segmentation, and even demographic classification. However, these models often lack interpretability, obscuring the basis on which decisions are made. In certain fields, such as healthcare or forensic analysis, understanding the origin of such decisions can be crucial, especially where the transparency and validity of the model’s conclusions are paramount. The need for interpretable methods underlies our approach, where we focus on clear, quantifiable proportions to represent human characteristics in a way that is explainable and systematically derived from defined features.
+
+Meta’s Segment Anything Model (SAM) presents a novel framework for generating accurate, polygonal segmentations of objects and features within images, facilitating the extraction of human body and facial regions in an automated manner. SAM’s segmentation of facial regions, such as the nose, mouth, eyes, chin, and other specific landmarks, provides a foundational tool for extracting structured geometric representations of human features. We leverage SAM’s segmentation granularity in our approach, introducing the Segmented Human Proportions Metric (SHPM) as an interpretable method for quantifying human body and facial attributes through relative feature proportions.
+
+The SHPM constructs a vector of proportionate relationships by comparing each segmented facial feature with every other, creating a comprehensive set of pairwise ratios specifically for facial characteristics. Rather than using a single reference feature, SHPM calculates proportions across all feature pairs within the face, capturing the relative sizes of each feature in relation to every other. This cross-comparative approach provides SHPM with inherent invariance to scale and perspective distortions, enabling a robust representation of individual facial attributes across varying imaging conditions. Designed as a vectorized and interpretable representation, SHPM facilitates clear and standardized comparisons of human facial features without reliance on complex transformations or opaque decision rules.
+
+The SHPM’s use of proportional measurements provides notable advantages in image analysis by naturally addressing issues of scale and perspective distortions. Because the proportions are computed as relative ratios, global scaling effects (e.g., distance from the camera or magnification) are effectively normalized, neutralizing these distortions in the resulting proportional vector. Moreover, SHPM’s focus on internal proportionality, rather than absolute size, offers a streamlined comparative framework that preserves the intrinsic geometric relationships within the face and body, making it well-suited for robust feature comparisons.
+
+The SHPM has broad applicability across a variety of image-based tasks. Applications include identity verification, biometric analysis, and demographic studies, as well as ethical explorations of ethnic characteristics within images. By generating standardized proportion vectors, SHPM can be applied to both individual and group analyses, supporting demographic aggregations by age, sex, and ethnicity. This metric is especially suited to scenarios where group-level analysis of body and facial proportions is required, as it allows for aggregation of individual proportion vectors into average representations for specified demographic groups.
+
+We validate SHPM through a series of experiments on binary classification tasks, including identity verification and differentiation between male and female body proportions, demonstrating SHPM’s capacity to capture both individual and group-level features. These experiments illustrate SHPM’s adaptability across various classification problems. Additionally, we integrate supplementary similarity metrics to improve SHPM’s accuracy, ensuring comprehensive and nuanced evaluations of similarity across different contexts. Together, these contributions position SHPM as a valuable addition to the domain of image-based human body and facial analysis, offering a standardized, interpretable metric for capturing human proportions in a structured and meaningful way.
+
+To summarize, this paper presents the SHPM as a novel approach for analyzing and comparing human facial proportions using polygonal segmentation of facial features. Section \ref{related_work} reviews existing methods in facial proportion analysis, highlighting the advantages and limitations of both traditional and AI-based techniques. In Section \ref{metric}, we define the SHPM and detail its mathematical formulation, focusing on the metric's robustness against scale and perspective distortions. Section \ref{score_calc} outlines our method for calculating similarity scores, enabling quantitative comparisons between individuals and groups. Section \ref{code} provides an overview of the code implementation, which utilizes the LangSAM model for precise polygon segmentation of facial features. In Section \ref{experiments}, we apply SHPM to two classification tasks—face identification and gender matching—demonstrating its versatility and effectiveness. The study concludes in Section \ref{conclusion} with potential applications of SHPM, particularly its utility in demographic studies, biometric analysis, and medical applications, while considering ethical implications in analyses involving sensitive attributes like ethnicity and sex.
+
+
+\section{Related Work}
+\label{related_work}
+
+
+\section{The Metric}
+\label{metric}
+
+The Segmented Human Proportions Metric (SHPM) relies on the Segment Anything Model (SAM), which returns a polygonal approximation for each segmented part of the human body or face. Let us denote by $P_i$ the polygon associated with the $i$-th part of the human body, where $i$ represents a specific feature such as the nose, mouth, eyes, etc. Each polygon is defined by a set of vertices $\{v_{i,1}, v_{i,2}, \dots, v_{i,k}\}$ in the image plane, with $k$ being the number of vertices. The area of the polygon $P_i$ is denoted by $\text{Area}(P_i)$ and can be computed using the standard formula for the area of a polygon given its vertices.
+
+We propose to compute the proportion of each body part $i$ relative to a reference part $j$ (such as the head, or another larger, stable feature), thereby defining a set of proportions for every relevant body part. Mathematically, the proportion of part $i$ with respect to part $j$ is given by
+
+\[
+\text{Prop}_{i,j} = \frac{\text{Area}(P_i)}{\text{Area}(P_j)}
+\]
+
+where $\text{Area}(P_i)$ and $\text{Area}(P_j)$ are the areas of the polygons corresponding to parts $i$ and $j$, respectively. The choice of reference part $j$ can be adjusted depending on the application, but for standardization purposes, we often use the head or torso as the reference.
+
+Let us define the \emph{Proportion Vector} for an individual as
+
+\[
+\mathbf{Prop}_{\text{person}} = [\text{Prop}_{1,j}, \text{Prop}_{2,j}, \dots, \text{Prop}_{n,j}]
+\]
+
+where $n$ is the number of segmented body parts and each $\text{Prop}_{i,j}$ represents the ratio of part $i$ relative to the reference part $j$. This vector serves as a compact and interpretable representation of the individual's body proportions.
+
+Given that each polygon $P_i$ is defined by its set of vertices, the area of $P_i$ can be calculated using the following formula for the area of a polygon in 2D:
+
+\[
+\text{Area}(P_i) = \frac{1}{2} \left| \sum_{k=1}^{n} x_k y_{k+1} - y_k x_{k+1} \right|
+\]
+
+where $(x_k, y_k)$ are the coordinates of the $k$-th vertex of the polygon $P_i$, and $(x_{n+1}, y_{n+1}) = (x_1, y_1)$ to close the polygon. This formula is applied to each segmented region to calculate the area of the corresponding body part.
+
+
+One of the key benefits of using a proportional approach, as defined above, is that it inherently accounts for scale and perspective distortions. Since the proportions are computed as ratios of areas, any global scaling of the image (e.g., a person being closer or farther from the camera) will affect both the numerator and the denominator equally, thus canceling out the distortion. Let $\alpha$ be a global scaling factor applied to the image. The areas of the polygons will scale by $\alpha^2$, but the proportions will remain invariant:
+
+\[
+\text{Prop}_{i,j}^{\alpha} = \frac{\alpha^2 \cdot \text{Area}(P_i)}{\alpha^2 \cdot \text{Area}(P_j)} = \text{Prop}_{i,j}
+\]
+
+Thus, the proportion vector $\mathbf{Prop}_{\text{person}}$ remains unchanged under scaling, ensuring robustness to image size or distance variations.
+
+The complete metric, SHPM, is defined as the set of all pairwise proportions of segmented body parts relative to the chosen reference part. For a set of $n$ body parts, this results in a vector of proportions:
+
+\[
+\mathbf{Prop}_{\text{SHPM}} = [\text{Prop}_{1,j}, \text{Prop}_{2,j}, \dots, \text{Prop}_{n,j}]
+\]
+
+This vector can be utilized as a feature representation for various tasks such as identity verification, biometric analysis, and other applications in which human body proportions are relevant. The SHPM is designed to be both interpretable and robust, providing a meaningful quantification of human body proportions in a variety of contexts.
+
+The SHPM can be extended to represent not just individual proportions, but also the average or typical proportions for a specific group of people. Groups can be defined based on any desired demographic or physical criterion, such as ethnicity, age, or even specific populations like athletes or individuals within a certain medical condition. To represent the proportions for a group, we aggregate the individual proportion vectors $\mathbf{Prop}_{\text{person}}$ across the group members.
+
+Let us define a group $\mathcal{G}$ consisting of $m$ individuals, each with a proportion vector $\mathbf{Prop}_{\text{person}_k}$, where $k = 1, 2, \dots, m$. The average proportion vector for the group $\mathbf{Prop}_{\mathcal{G}}$ can be computed as:
+
+\[
+\mathbf{Prop}_{\mathcal{G}} = \frac{1}{m} \sum_{k=1}^{m} \mathbf{Prop}_{\text{person}_k}
+\]
+
+This aggregated vector represents the average set of proportions for the group $\mathcal{G}$. The group could be defined based on various demographic features, such as:
+
+\begin{itemize}
+    \item \textbf{Ethnicity:} The group could represent individuals from a specific ethnic background, allowing for the identification of common proportional characteristics within that ethnicity.
+    \item \textbf{Age:} Age-based groups can be used to capture the changes in body proportions over time, or to focus on particular age ranges.
+    \item \textbf{Occupation or Lifestyle:} For instance, athletes or individuals with specific physical training regimes may have different body proportions compared to the general population.
+\end{itemize}
+
+It is often useful to further refine the analysis by dividing the population based on biological sex, as male and female individuals typically exhibit different body proportions. Thus, we can define separate group proportion vectors for males and females within any given group. Let $\mathcal{G}_{M}$ denote the group of males and $\mathcal{G}_{F}$ denote the group of females within $\mathcal{G}$. The average proportion vectors for these subgroups can be defined as:
+
+\[
+\mathbf{Prop}_{\mathcal{G}_M} = \frac{1}{m_M} \sum_{k \in \mathcal{G}_M} \mathbf{Prop}_{\text{person}_k}, \quad \mathbf{Prop}_{\mathcal{G}_F} = \frac{1}{m_F} \sum_{k \in \mathcal{G}_F} \mathbf{Prop}_{\text{person}_k}
+\]
+
+where $m_M$ and $m_F$ are the number of males and females in the group, respectively. These two vectors $\mathbf{Prop}_{\mathcal{G}_M}$ and $\mathbf{Prop}_{\mathcal{G}_F}$ provide a more detailed representation of the typical body proportions for males and females within the group.
+
+By separating the analysis by sex, we can capture the different proportional characteristics that are naturally present between males and females. This allows for a more accurate and nuanced understanding of how body proportions vary within different demographics.
+
+\subsection{Score Calculation}
+\label{score_calc}
+
+To quantify the similarity between a target image and a set of comparison images, we developed a fidelity calculation method based on the Segmented Human Proportions Metric (SHPM). This method generates a numerical similarity score that represents how closely a target image matches each image in a predefined dataset. This similarity score can then be used in tasks such as identity verification, offering a robust quantitative measure of resemblance.
+
+The function calculates fidelity in three main steps:
+
+\begin{enumerate}
+    \item \textbf{Cosine Similarity Calculation:} For each comparison image in the dataset, we compute the cosine similarity between the proportion vector of the target image, denoted by $\mathbf{Prop}_{\text{target}}$, and the proportion vector of each comparison image, denoted by $\mathbf{Prop}_{\text{comp}_k}$, where $k$ indexes each image in the dataset. The cosine similarity for a target-comparison pair $(\text{target}, \text{comp}_k)$ is given by
+
+    \[
+    \text{cos\_sim}(\text{target}, \text{comp}_k) = \frac{\mathbf{Prop}_{\text{target}} \cdot \mathbf{Prop}_{\text{comp}_k}}{\|\mathbf{Prop}_{\text{target}}\| \|\mathbf{Prop}_{\text{comp}_k}\|}
+    \]
+
+    where $\mathbf{Prop}_{\text{target}} \cdot \mathbf{Prop}_{\text{comp}_k}$ denotes the dot product of the two vectors, and $\|\mathbf{Prop}_{\text{target}}\|$ and $\|\mathbf{Prop}_{\text{comp}_k}\|$ represent the Euclidean norms of the target and comparison vectors, respectively.
+
+    \item \textbf{Average Fidelity Score:} The function calculates an average fidelity score by taking the mean of all cosine similarities between the target vector and each vector in the comparison set. Given $m$ comparison images, the average fidelity score $\bar{F}$ is defined as:
+
+    \[
+    \bar{F} = \frac{1}{m} \sum_{k=1}^{m} \text{cos\_sim}(\text{target}, \text{comp}_k)
+    \]
+
+    This average score provides a baseline measure of similarity between the target image and the overall dataset.
+
+    \item \textbf{Sigmoid Adjustment for Sensitivity:} To refine the fidelity score, we apply a sigmoid transformation that adjusts the score based on a midpoint $\mu$ and an intensity factor $\beta$. This adjustment enhances the interpretability of the fidelity score by concentrating sensitivity around a predefined similarity threshold, which we set at $\mu = 0.85$ with an intensity of $\beta = 50$. The adjusted score $S_{\text{adjusted}}$ is given by:
+
+    \[
+    S_{\text{adjusted}} = \frac{1}{1 + e^{-\beta (\bar{F} - \mu)}}
+    \]
+
+    This transformation ensures that scores close to the threshold $\mu$ are more distinguishable, providing a sharper indication of similarity for images that closely match or diverge from the target proportions.
+\end{enumerate}
+
+The final similarity score $S_{\text{adjusted}}$ is a refined measure ranging from 0 to 1, where higher values indicate a stronger similarity between the target and comparison images. This approach, combining cosine similarity with a sensitivity-adjusted transformation, offers a reliable metric for binary classification tasks, such as identity verification and sex classification.
+
+
+\subsection{Code Implementation}
+\label{code}
+
+To implement the Segmented Human Proportions Metric (SHPM), we utilize the LangSAM model\footnote{\url{https://github.com/luca-medeiros/lang-segment-anything}}, which is based on the Segment Anything Model (SAM). This tool allows for semantic segmentation of image parts based on text prompts, enabling the extraction of specific human body and facial features. LangSAM returns polygonal approximations for each segmented part, and these polygons are further analyzed to calculate area-based proportions used in the SHPM.
+
+In our code, we begin by initializing LangSAM and loading the target image in RGB format. A list of text prompts corresponding to desired body or facial parts (e.g., "face", "nose", "mouth") is then used as input, allowing LangSAM to generate segmentation masks for each feature. These masks approximate the body parts as polygons, which can then be processed to compute area-based proportions relative to a reference part (e.g., the face or head). The following elements are segmented, each labeled as in the code:
+
+\begin{itemize}
+    \item \textbf{Face} (\texttt{face}): \textcolor{red}{Primary reference for all proportions}.
+    \item \textbf{Nose} (\texttt{nose}): Segmented for facial ratio calculations.
+    \item \textbf{Mouth} (\texttt{mouth}): Included as a distinct feature.
+    \item \textbf{Left Eye} (\texttt{eye[0]}) and \textbf{Right Eye} (\texttt{eye[1]}): Calculated individually and combined.
+    \item \textbf{Left Eyebrow} (\texttt{eyebrow[0]}) and \textbf{Right Eyebrow} (\texttt{eyebrow[1]}): Calculated individually.
+    \item \textbf{Chin} (\texttt{chin}): Additional lower facial proportion.
+    \item \textbf{Hair} (\texttt{hair}): Used for overall face ratio analysis.
+\end{itemize}
+
+Each valid proportion is then stored in a cross-comparative vector format. This vector omits redundant proportions (i.e., inverses like $\text{nose\_mouth}$ and $\text{mouth\_nose}$), ensuring a more compact representation of the SHPM. The result is a structured proportion vector for each individual, ready for analysis and applicable across various demographics as outlined in previous sections. Using these elements, a total of 45 unique combinations of proportions is generated by comparing each element with others.
+
+The code further ensures robustness by handling segmentation errors: if LangSAM fails to identify a mask for any given part, the code assigns a value of NaN to the relevant proportion, avoiding interruptions in the calculation process. In cases where parts (like "eyes" or "eyebrows") consist of left and right components, the code separately calculates proportions for each component (e.g., `left\_eye` and `right\_eye`) and combines them into a single measurement when appropriate.
+
+
+\subsection{Limitations and Considerations}
+\label{limitations}
+
+It is important to note that while the SHPM provides a mathematically rigorous method for comparing body proportions, it is critical to ensure that any demographic analysis or classification does not reinforce stereotypes or biases. The aggregation of proportions for groups should always be conducted with careful consideration of the ethical implications, particularly when dealing with sensitive attributes such as sex and ethnicity.
+
+
+\section{Experiments}
+\label{experiments}
+
+
+To demonstrate the potential of the Segmented Human Proportions Metric (SHPM) in practical applications, we designed two initial binary classification tasks. These tasks serve as toy models to illustrate SHPM's capabilities in capturing individual and group characteristics based on human body proportions. The selected experiments are fundamental yet meaningful applications, chosen to highlight the metric's robustness and potential for real-world use cases. 
+
+The first application aims to evaluate SHPM's ability to recognize individuals by determining whether a given image matches a particular person's proportions. For this, we curated a database of Creative Commons-licensed images of well-known public figures, ensuring a diverse set of poses and scenarios. By applying SHPM to these images, we established a proportion vector unique to each individual. Then, for each new image, SHPM generates a similarity score indicating how closely the individual's proportions in the new image match the established profile. This approach quantifies the resemblance between images, facilitating an accurate verification mechanism that could serve as a foundational step in identity recognition. The second application explores the capability of SHPM to distinguish between male and female body proportions. We utilized a subset of images from the COCO dataset, manually categorized into male and female groups. By applying SHPM to each image, we generated proportion vectors for individuals in both groups. Then, we applied a classification pipeline to determine the extent to which a new image aligns with the typical proportions of males or females. This experiment serves as a demonstration of SHPM's potential in demographic classification, focusing initially on sex classification as a baseline task.
+
+These initial applications provide a proof-of-concept for SHPM and serve as a basis for understanding its effectiveness in binary classification tasks. They illustrate the flexibility of SHPM across distinct classification problems, laying a foundation for future research and expansion in areas such as biometric analysis, demographic studies, and beyond.
+
+\subsection{Identity Identification}
+\label{face_id}
+
+In this section, we present the results obtained by analyzing the fidelity across different datasets of segmented human body proportions, aimed at identity verification based on similarity thresholds. Each dataset corresponds to a unique individual, and the objective is to assess whether cross-dataset fidelity analysis can accurately identify whether two datasets represent the same person.
+
+For this initial test, we selected a diverse group of widely recognized public figures. The individuals chosen for this analysis are Pelé, Serena Williams, Jackie Chan, Han Kang, Ayrton Senna, and Marie Curie.  These figures were selected not only due to their visibility and availability of images but also for their distinct physical characteristics, professions, and age ranges, which bring diversity to the dataset. Pelé and Ayrton Senna, both legendary athletes, differ in build and sport. Serena Williams, a prominent tennis player, contrasts with Jackie Chan, an actor and martial artist known for his unique physical agility. Han Kang, a South Korean novelist, and Marie Curie, a historic scientist, add further variety to the sample in terms of both physique and background. By incorporating individuals from diverse fields and distinct physical attributes, we aim to test the model’s capacity for identity verification. 
+
+To achieve this, we compute the fidelity between pairs of datasets by treating each dataset as a target and calculating its similarity to every other dataset. Let \( D_i \) and \( D_j \) represent two datasets (each containing segmented body proportion vectors) corresponding to individuals \( i \) and \( j \), respectively. The cross-dataset fidelity \( F_{i,j} \) between datasets \( D_i \) and \( D_j \) is computed as follows:
+
+\[
+F_{i,j} = \frac{1}{N} \sum_{k=1}^N \frac{\mathbf{v}_{i, k} \cdot \mathbf{v}_{j, l}}{\|\mathbf{v}_{i, k}\| \|\mathbf{v}_{j, l}\|}, \quad \text{for all } k \in D_i \text{ and } l \in D_j,
+\]
+
+where \( \mathbf{v}_{i, k} \) represents the proportion vector of the \( k \)-th sample in \( D_i \), and \( N \) is the total number of fidelity comparisons between all vectors in \( D_i \) and \( D_j \). The fidelity between two vectors is calculated using cosine similarity, which evaluates the degree of alignment between vectors in the feature space of segmented proportions. This average fidelity score \( F_{i,j} \) quantifies the overall similarity between datasets \( D_i \) and \( D_j \).
+
+To examine internal consistency within each dataset, we calculate a self-fidelity score by averaging the fidelity scores across all unique pairs of vectors within the same dataset:
+
+\[
+F_{i,i} = \frac{2}{M (M - 1)} \sum_{k=1}^{M-1} \sum_{l=k+1}^{M} \frac{\mathbf{v}_{i, k} \cdot \mathbf{v}_{i, l}}{\|\mathbf{v}_{i, k}\| \|\mathbf{v}_{i, l}\|},
+\]
+
+where \( M \) denotes the number of samples in \( D_i \), and \( F_{i,i} \) represents the average self-fidelity within dataset \( D_i \). This self-fidelity score serves as a baseline measure of similarity within each individual’s dataset, allowing us to compare it to cross-dataset scores for identity verification.
+
+The outcomes of these calculations are summarized in a cross-table with heatmap (see Figure~\ref{fig:cross-dataset-heatmap}), where each cell \( (i, j) \) represents the average fidelity \( F_{i,j} \) between datasets \( D_i \) and \( D_j \). Diagonal entries \( F_{i,i} \) show the internal fidelity for each dataset, highlighting the consistency of the proportion vectors within each individual’s dataset.
+
+To determine the identity verification capabilities, we define a threshold \( T \) such that:
+
+\[
+\text{Identity Verified} \iff F_{i,j} \geq T
+\]
+
+This threshold \( T \) enables us to infer whether a fidelity score indicates that two datasets likely belong to the same individual. When \( F_{i,j} \geq T \), the model suggests that datasets \( D_i \) and \( D_j \) may represent the same person. Conversely, \( F_{i,j} < T \) would imply a likely mismatch.
+
+The fidelity threshold \( T \) is determined based on the distribution of self-fidelity scores \( F_{i,i} \), allowing a balance between accurately identifying matches and minimizing false positives. The cross-table with heatmap (Figure~\ref{fig:cross-dataset-heatmap}) provides a visual comparison of similarity scores across datasets, supporting an assessment of identity verification accuracy under different threshold values.
+
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{shpm_cross_dataset_heatmap.png}
+    \caption{Cross-dataset fidelity heatmap obtained with SHPM. Diagonal elements represent self-fidelity within each individual dataset, while off-diagonal values indicate cross-individual similarity.}
+    \label{fig:cross-dataset-heatmap}
+\end{figure}
+
+
+\subsection{Gender Matching}
+\label{gender}
+
+In this experiment, we aim to evaluate whether the segmented human proportion metric can differentiate between male and female classifications based on visual characteristics alone. Recognizing the complexity and sensitivity surrounding sex and gender categorization, we rely solely on visual cues for classification, acknowledging the inherent limitations and potential inaccuracies of such an approach. This experiment does not seek to define biological sex or gender but rather to test the metric’s application potential, with all images used being anonymized and without display.
+
+First, using the COCO dataset API, we will collect \textcolor{red}{1000} images. The selection criteria will filter for the presence of a "person" in each image, with further requirements that each image must contain only one individual, and that the individual’s face is fully visible to facilitate visual classification. This visual-only approach serves to standardize data quality and context for the proportion analysis.
+
+After collection, the images will be visually sorted into two groups, labeled as male and female, based on apparent external characteristics. Let us denote these groups by \( G_{\text{male}} \) and \( G_{\text{female}} \), where each \( G_x \) contains proportion vectors \( \mathbf{v}_{x,i} \) for each individual \( i \) in the group \( x \). We emphasize that this classification is based solely on visual markers and does not purport to reflect biological sex or gender identity accurately. Following journal guidelines on sex- and gender-based analyses, we clarify that this study’s assignment is based on visual appearance alone and may not align with an individual’s sex assigned at birth or gender identity. While we strive for accuracy, we acknowledge the possibility of misclassification, and we stress that no intent to offend or make normative assertions on sex or gender is implied.
+
+With these visually classified groups, we then apply our human proportion metric to each individual image. This metric generates a segmented vector of body proportions for each subject, denoted as \( \mathbf{v}_{i} \in \mathbb{R}^n \), where \( n \) is the number of segmented body features used in the analysis. To examine group differences, we visualize key proportional characteristics for each group using violin plots, which reveal the distribution of specific proportions across \( G_{\text{male}} \) and \( G_{\text{female}} \). By assessing these distributions, we can observe any statistically significant variations in body proportions that may correlate with the visual classification of male and female groups.
+
+To assess the ability of our metric to classify individuals based on these proportion vectors, we utilize a fidelity-based thresholding method. For each individual vector \( \mathbf{v}_{i} \), we calculate its fidelity score relative to the mean vector \( \overline{\mathbf{v}}_{G_x} \) of each group, where \( \overline{\mathbf{v}}_{G_x} = \frac{1}{|G_x|} \sum_{i \in G_x} \mathbf{v}_{x,i} \) represents the mean proportion vector for group \( G_x \). The fidelity score \( F(\mathbf{v}_{i}, \overline{\mathbf{v}}_{G_x}) \) is computed as the cosine similarity between \( \mathbf{v}_{i} \) and \( \overline{\mathbf{v}}_{G_x} \):
+
+\[
+F(\mathbf{v}_{i}, \overline{\mathbf{v}}_{G_x}) = \frac{\mathbf{v}_{i} \cdot \overline{\mathbf{v}}_{G_x}}{\|\mathbf{v}_{i}\| \|\overline{\mathbf{v}}_{G_x}\|}
+\]
+
+Using a threshold \( T \) on this fidelity score, we establish a criterion for classifying each \( \mathbf{v}_{i} \) as either male or female. Specifically, we assign an individual to group \( G_{\text{male}} \) if \( F(\mathbf{v}_{i}, \overline{\mathbf{v}}_{G_{\text{male}}}) \geq T \) and to \( G_{\text{female}} \) otherwise. We then construct a confusion matrix based on these classifications to evaluate the effectiveness of the metric and threshold in differentiating between the two groups. The confusion matrix provides insight into the proportion of correct classifications within this initial experiment.
+
+Finally, we address the ethical considerations and limitations of this study. This experiment does not seek to represent the full complexity of biological sex or sociological gender constructs. In alignment with the SAGER guidelines, we clarify that the term “sex” in this study refers exclusively to a visual, binary classification based on appearance in the collected images, not as an assertion of an individual’s biological sex or gender identity. The inherent limitations of visual classification and the potential for misclassification limit the generalizability of our results. We view this study as an exploratory assessment of the metric’s potential in visually distinguishable cases and do not propose any normative conclusions. The threshold and classification approach applied here is specific to this dataset and should be interpreted within the context of this controlled experiment.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.85\linewidth]{violin_face_ratios_imdb_wiki.png}
+    \caption{Violin plots of facial proportion distributions extracted with SHPM from the IMDB-WIKI dataset. Each violin represents the distribution of a facial ratio, separated by visually assigned male and female groups, highlighting differences in central tendency and dispersion.}
+    \label{fig:violin-face-ratios}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\linewidth]{boxplot_cross_ratios_imdb_wiki.png}
+    \caption{Box plots of cross-facial proportions computed with SHPM. The main panel shows broader ratio relationships, while the inset highlights finer-scale face-relative ratios, enabling clearer comparison between visually classified male and female groups.}
+    \label{fig:boxplot-cross-ratios}
+\end{figure}
+
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.85\linewidth]{tsne_facial_proportions_gender.png}
+    \caption{t-SNE projection of SHPM proportion vectors. Each point represents an individual image, embedded in a two-dimensional space and colored according to visual sex classification. The projection reveals partial clustering and overlap between male and female proportion patterns.}
+    \label{fig:tsne-gender}
+\end{figure}
+
+
+% ------------------------------------------------------------
+\begin{figure}[t]
+\centering
+
+% Altura das imagens
+\newcommand{\Himg}{7.2cm}
+
+% ===== Linha 1 (Flux | Gemini) =====
+\begin{minipage}{0.9\textwidth} % Um container centralizado para as duas
+    \centering
+    \begin{subfigure}[t]{0.42\textwidth}
+        \centering
+        \fbox{\includegraphics[height=\Himg,keepaspectratio]{Flux_SHPM.png}}
+        \caption{Flux}
+    \end{subfigure}
+    \hspace{1mm} % Espaço quase zero entre elas
+    \begin{subfigure}[t]{0.42\textwidth}
+        \centering
+        \fbox{\includegraphics[height=\Himg,keepaspectratio]{Gemini_SHPM.png}}
+        \caption{Gemini}
+    \end{subfigure}
+\end{minipage}
+
+\vspace{4mm}
+
+% ===== Linha 2 (GPT | SDXL) =====
+\begin{minipage}{0.9\textwidth}
+    \centering
+    \begin{subfigure}[t]{0.42\textwidth}
+        \centering
+        \fbox{\includegraphics[height=\Himg,keepaspectratio]{GPT_SHPM.png}}
+        \caption{GPT}
+    \end{subfigure}
+    \hspace{1mm} % Espaço quase zero entre elas
+    \begin{subfigure}[t]{0.42\textwidth}
+        \centering
+        \fbox{\includegraphics[height=\Himg,keepaspectratio]{SDXL_SHPM.png}}
+        \caption{SDXL}
+    \end{subfigure}
+\end{minipage}
+
+\caption{Quadro comparativo.}
+\label{fig:quadro-modelos}
+\end{figure}
+
+\FloatBarrier
+\section{Conclusion}
+\label{conclusion}
+
+\subsection{Applications of Group Proportions}
+
+The aggregated proportion vectors $\mathbf{Prop}_{\mathcal{G}}$, $\mathbf{Prop}_{\mathcal{G}_M}$, and $\mathbf{Prop}_{\mathcal{G}_F}$ can be used in a variety of applications:
+
+\begin{itemize}
+    \item \textbf{Demographic Studies:} The SHPM can be applied to study differences in body proportions across various demographic groups, such as ethnic groups or age categories. This can be useful in fields such as anthropology, healthcare, or social sciences.
+    \item \textbf{Biometric Analysis:} In security applications, group proportion vectors can be used to help classify individuals into predefined categories based on body proportions, potentially improving the accuracy of identity verification systems.
+    \item \textbf{Medical and Health Applications:} The analysis of body proportions within groups could be used to identify typical or abnormal body shapes related to certain health conditions, or to track changes over time in a population undergoing specific treatments or interventions.
+    \item \textbf{Ethnicity-related Studies:} Although not the primary focus of this paper, the SHPM could be applied to explore body proportion differences across ethnicities, provided it is done in a responsible and ethical manner.
+\end{itemize}
+
+
+
+\section*{Acknowledgments}
+
+
+\section*{Funding}
+This study was funded by the Funda\c{c}\~ao de Amparo \`a Pesquisa do Estado de S\~ao Paulo (FAPESP) through Project Nos. 2024/14934-0 (F.M.) and 2025/19585-6 (G.S.F.).
+
+
+\section*{Contributions}
+Felipe M. and Giovanni F. conducted the experiments. Kelton P. supervised the research. Guilherme F. provided insights and strengthened the study with conceptual contributions. All authors contributed to the composition of the article and the conception of the study. The final manuscript was reviewed and approved by all authors.
+
+\section*{Interests}
+The authors declare that they have no competing interests.
+%\section*{Materials}
+
+\bibliographystyle{apalike-sol}
+\bibliography{main} 
+
+
+\end{document}

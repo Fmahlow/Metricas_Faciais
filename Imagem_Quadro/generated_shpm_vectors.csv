@@ -1,0 +1,5 @@
+model,Nose_vs_Face,Mouth_vs_Face,Eyes_vs_Face,Nose_vs_Mouth,Eyes_vs_Nose,Eyes_vs_Mouth
+Flux,,,,,,
+GPT,,,,,,
+Gemini,,,,,,
+SDXL,,,,,,

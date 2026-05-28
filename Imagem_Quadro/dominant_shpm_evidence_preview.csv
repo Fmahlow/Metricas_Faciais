@@ -1,0 +1,13 @@
+model,metric,evidence,predicted_group,notes
+Flux,Eyes_vs_Face,-1.42,Female,preview visual; substituir por valores reais
+Flux,Nose_vs_Face,-0.95,Female,preview visual; substituir por valores reais
+Flux,Mouth_vs_Face,-0.62,Female,preview visual; substituir por valores reais
+GPT,Nose_vs_Mouth,1.28,Male,preview visual; substituir por valores reais
+GPT,Eyes_vs_Nose,0.94,Male,preview visual; substituir por valores reais
+GPT,Eyes_vs_Mouth,0.52,Male,preview visual; substituir por valores reais
+Gemini,Mouth_vs_Face,-1.12,Female,preview visual; substituir por valores reais
+Gemini,Nose_vs_Mouth,-0.71,Female,preview visual; substituir por valores reais
+Gemini,Eyes_vs_Face,-0.49,Female,preview visual; substituir por valores reais
+SDXL,Eyes_vs_Nose,1.48,Male,preview visual; substituir por valores reais
+SDXL,Eyes_vs_Mouth,1.10,Male,preview visual; substituir por valores reais
+SDXL,Nose_vs_Face,0.67,Male,preview visual; substituir por valores reais

@@ -1,0 +1,13 @@
+model,metric,evidence,predicted_group,notes
+Flux,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+Flux,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+Flux,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+GPT,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+GPT,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+GPT,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+Gemini,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+Gemini,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+Gemini,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+SDXL,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+SDXL,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+SDXL,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
