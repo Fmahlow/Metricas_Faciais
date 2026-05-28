@@ -82,7 +82,7 @@ This distinction is especially important for studies involving gender- or ethnic
 
 The contributions of this paper are fourfold. First, we introduce SI-FPM as a segmented facial proportion metric that represents facial images through scale-normalized pairwise ratios. Second, we define a group-comparison procedure that supports both identity-oriented similarity analysis and aggregate representation auditing. Third, we propose a driver-based explanation layer that identifies the top facial ratios responsible for a group-proximity decision. Fourth, we discuss the ethical scope of the method, emphasizing its use as an audit tool rather than as a normative system for assigning sensitive identities to individuals.
 
-The remainder of this paper is organized as follows. Section \ref{related_work} reviews work on facial measurements, segmentation-based visual analysis, bias auditing, and explainable representations. Section \ref{operational_definitions} defines the ethical and operational framing used throughout the paper. Section \ref{metric} presents the SI-FPM formulation and its group-comparison procedure. Section \ref{experiments} reports experiments on identity-oriented similarity, group-level auditing, and generated-image inspection. Section \ref{discussion} discusses ethical implications and limitations. Section \ref{conclusion} concludes the paper.
+The remainder of this paper is organized as follows. Section \ref{related_work} reviews work on facial measurements, segmentation-based visual analysis, bias auditing, and explainable representations. Section \ref{methodology} presents the ethical framing, the SI-FPM formulation, and the feature-level explanation procedure. Section \ref{results_discussion} reports the identity-oriented, group-level, and generated-image analyses, followed by a discussion of ethical implications and limitations. Section \ref{conclusion} concludes the paper.
 
 
 \section{Related Work}
@@ -97,7 +97,10 @@ Explainability is central to this paper. Embedding-based approaches, including C
 Finally, this work follows the broader recommendation that studies involving sex- or gender-related variables must explicitly define how those variables are operationalized and avoid treating them as simple biological or visual facts \cite{heidari2016sager}. Our use of group labels is therefore intentionally restricted. The method evaluates similarity to reference groups under dataset-provided annotations; it does not infer personal identity, self-identified gender, ethnicity, or biological sex from an image.
 
 
-\section{Operational Definitions and Ethical Framing}
+\section{Methodology}
+\label{methodology}
+
+\subsection{Operational Definitions and Ethical Framing}
 \label{operational_definitions}
 
 SI-FPM is proposed as an audit-oriented metric, not as a system for assigning social identity to individuals. This distinction guides the terminology used throughout the paper.
@@ -111,7 +114,7 @@ The same restriction applies to possible future ethnicity-related applications. 
 Identity-oriented experiments in this paper are treated separately. When SI-FPM is used to compare images of the same public figure, the goal is to evaluate whether facial proportion vectors retain enough stable geometric information for image-set similarity. This experiment does not support surveillance deployment or individual identification in unconstrained settings. It is included as a controlled test of representation consistency.
 
 
-\section{The SI-FPM Metric}
+\subsection{The SI-FPM Metric}
 \label{metric}
 
 SI-FPM represents a facial image through proportional relations between segmented facial regions. Let $\mathcal{R}=\{R_1,R_2,\dots,R_n\}$ be the set of facial regions extracted from an image, where each region corresponds to a semantically defined facial component such as the face, nose, mouth, eyes, eyebrows, chin, or hair. Each region $R_i$ is represented by a polygon $P_i$ in the image plane, with vertices $\{v_{i,1},v_{i,2},\dots,v_{i,k_i}\}$.
@@ -143,7 +146,7 @@ r_{i,j}^{\alpha}=\frac{\alpha^2\text{Area}(P_i)}{\alpha^2\text{Area}(P_j)}=r_{i,
 This property does not make SI-FPM invariant to all imaging conditions. Pose, expression, occlusion, segmentation quality, and perspective effects can still affect the measured regions. However, the ratio-based formulation reduces dependence on absolute image size and makes each feature directly interpretable.
 
 
-\subsection{Reference Groups and Proximity Scores}
+\subsubsection{Reference Groups and Proximity Scores}
 \label{score_calc}
 
 Let $\mathcal{G}$ be a reference group containing $m$ images with SI-FPM vectors $\{\mathbf{s}_1,\mathbf{s}_2,\dots,\mathbf{s}_m\}$. A group prototype can be defined as the component-wise mean:
@@ -167,7 +170,7 @@ For two reference groups, $\mathcal{G}_A$ and $\mathcal{G}_B$, a target image ca
 This assignment should be read as a proximity decision under the chosen feature space, not as a social or biological classification. In experiments using male/female dataset labels, Group A and Group B correspond to those dataset-provided annotations.
 
 
-\subsection{Feature-Level Explanation}
+\subsubsection{Feature-Level Explanation}
 \label{explainability}
 
 The main interpretability advantage of SI-FPM is that each coordinate has a semantic name. To identify which features most support a group-proximity decision, we compute a driver score for each ratio. Let $m_{g,k}$ be the median value of feature $k$ in group $g$, and let $\text{IQR}_{g,k}$ be its interquartile range. The standardized distance between a target feature $s_k(x)$ and group $g$ is:
@@ -191,14 +194,14 @@ E_k^{A\leftarrow B}(x)=w_k\left(D_{B,k}(x)-D_{A,k}(x)\right).
 Positive values indicate that feature $k$ brings the target image closer to Group A than to Group B; negative values indicate the reverse. The top-ranked absolute values are visualized as local drivers. These values should be interpreted as dataset- and comparison-specific evidence, not as universal traits of a social group.
 
 
-\subsection{Implementation}
+\subsubsection{Implementation}
 \label{code}
 
 The current implementation uses LangSAM\footnote{\url{https://github.com/luca-medeiros/lang-segment-anything}}, built on SAM, to segment facial regions from text prompts. The target regions include the face, nose, mouth, eyes, eyebrows, chin, and hair when available. Left and right components can be measured separately and then aggregated when a combined region is required. If a segmentation mask is missing or unreliable, the corresponding ratio is stored as missing rather than forcing an artificial value. This prevents one failed segmentation from invalidating the full vector while preserving uncertainty in downstream analysis.
 
 
-\section{Experiments}
-\label{experiments}
+\section{Results and Discussion}
+\label{results_discussion}
 
 We evaluate SI-FPM through three complementary analyses. The first tests whether facial proportion vectors preserve enough individual consistency to compare image sets of the same public figure. The second examines group-level proximity using male/female labels provided by the IMDB-WIKI dataset, treated here as Group A and Group B operational annotations. The third presents a generated-image audit layout for portraits produced by different generative AI models.
 
@@ -309,7 +312,7 @@ For each generated portrait, the audit panel combines the model output, the grou
 \FloatBarrier
 
 
-\section{Discussion and Limitations}
+\subsection{Discussion and Limitations}
 \label{discussion}
 
 SI-FPM offers a transparent alternative to purely embedding-based image comparison. Its main strength is that every feature has a direct geometric meaning, allowing researchers to inspect which proportions influence a similarity or group-proximity decision. This property is valuable for visual representation audits, where the legitimacy of the analysis depends not only on the output score but also on the ability to explain how that score was obtained.
