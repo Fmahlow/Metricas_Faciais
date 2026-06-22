@@ -176,6 +176,8 @@ where $(x_{i,t},y_{i,t})$ are the coordinates of the $t$-th vertex and $(x_{i,k_
 r_{i,j}=\frac{\text{Area}(P_i)}{\text{Area}(P_j)}.
 \]
 
+Area is preferred over linear distance measurements for three reasons. First, the area of a segmented region captures its full two-dimensional spatial extent — reflecting both width and height simultaneously — whereas a landmark-based distance encodes only one linear dimension of the feature. Second, area estimates aggregate over the entire mask boundary, making them less sensitive to local perturbations at region edges than distance measures, which depend on the precise localization of exactly two points. Third, segmentation models such as SAM produce polygon masks as their primary output, making area computation a direct and parameter-free step that requires no additional landmark detection within each region.
+
 The SI-FPM vector for image $x$ is the ordered collection of non-redundant pairwise ratios:
 
 \[
@@ -247,6 +249,28 @@ Positive values indicate that feature $k$ brings the target image closer to Grou
 Prior to segmentation, each image is passed through a face detection step to localize the facial region and suppress background areas that could otherwise attract spurious mask assignments. The detected face region is cropped with a small contextual margin to retain adjacent structures such as the hairline and chin contour, which are relevant to several SI-FPM ratios. Images are processed at their original resolution without forced resizing, preserving the spatial information required for accurate polygon area computation. No facial alignment or landmark-based normalization is applied before segmentation, as the ratio formulation is scale-invariant and the segmentation model operates directly on the raw crop.
 
 The current implementation uses LangSAM\footnote{\url{https://github.com/luca-medeiros/lang-segment-anything}}, built on SAM, to segment facial regions from text prompts. The target regions include the face, nose, mouth, eyes, eyebrows, chin, and hair when available. Left and right eye and eyebrow regions are segmented independently and their areas are summed to produce a single bilateral measurement when a combined region is required. If a segmentation mask is missing or unreliable, the corresponding ratio is stored as missing rather than forcing an artificial value. This prevents one failed segmentation from invalidating the full vector while preserving uncertainty in downstream analysis.
+
+With $n = 7$ regions, the SI-FPM vector contains $n(n-1)/2 = 21$ non-redundant pairwise ratios. Table~\ref{tab:features} lists all features. Ratios involving the hair region are marked with an asterisk and are included only when the corresponding mask is successfully segmented; in their absence the affected features are stored as missing values.
+
+\begin{table}[ht]
+\centering
+\caption{Complete set of 21 SI-FPM pairwise proportional ratios for $n=7$ facial regions. Each feature $r_{i,j}$ denotes $\text{Area}(P_i)/\text{Area}(P_j)$. Features marked with $^*$ are conditional on successful hair segmentation.}
+\label{tab:features}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Feature & Feature & Feature \\
+\midrule
+\texttt{Nose\_vs\_Face}      & \texttt{Eyes\_vs\_Nose}       & \texttt{Hair\_vs\_Mouth}$^*$      \\
+\texttt{Mouth\_vs\_Face}     & \texttt{Eyebrows\_vs\_Nose}   & \texttt{Eyebrows\_vs\_Eyes}       \\
+\texttt{Eyes\_vs\_Face}      & \texttt{Chin\_vs\_Nose}       & \texttt{Chin\_vs\_Eyes}           \\
+\texttt{Eyebrows\_vs\_Face}  & \texttt{Hair\_vs\_Nose}$^*$   & \texttt{Hair\_vs\_Eyes}$^*$       \\
+\texttt{Chin\_vs\_Face}      & \texttt{Eyes\_vs\_Mouth}      & \texttt{Chin\_vs\_Eyebrows}       \\
+\texttt{Hair\_vs\_Face}$^*$  & \texttt{Eyebrows\_vs\_Mouth}  & \texttt{Hair\_vs\_Eyebrows}$^*$   \\
+\texttt{Mouth\_vs\_Nose}     & \texttt{Chin\_vs\_Mouth}      & \texttt{Hair\_vs\_Chin}$^*$       \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 
 \section{Results and Discussion}
