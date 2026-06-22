@@ -200,11 +200,13 @@ Let $\mathcal{G}$ be a reference group containing $m$ images with SI-FPM vectors
 \boldsymbol{\mu}_{\mathcal{G}}=\frac{1}{m}\sum_{k=1}^{m}\mathbf{s}_k,
 \]
 
-or, in robustness-oriented settings, as the component-wise median. For a target image $x$, group proximity can be measured through cosine similarity:
+or, in robustness-oriented settings, as the component-wise median. The experiments reported in this paper use the component-wise mean; the median variant is available for datasets with anticipated outliers or heavily skewed ratio distributions. For a target image $x$, group proximity can be measured through cosine similarity:
 
 \[
 C(x,\mathcal{G})=\frac{\mathbf{s}(x)\cdot\boldsymbol{\mu}_{\mathcal{G}}}{\|\mathbf{s}(x)\|\|\boldsymbol{\mu}_{\mathcal{G}}\|}.
 \]
+
+Cosine similarity is preferred over Euclidean distance because all SI-FPM features are positive proportional ratios, and the absolute magnitude of $\mathbf{s}(x)$ reflects the composition of available segmented regions rather than a facial property of interest. By normalizing both vectors, cosine similarity captures the alignment of the proportional profile across regions, making the comparison invariant to differences in the number of valid ratios recovered per image.
 
 For two reference groups, $\mathcal{G}_A$ and $\mathcal{G}_B$, a target image can be assigned to the group with higher proximity:
 
@@ -230,7 +232,7 @@ We weight each feature by its between-group separability:
 w_k=\frac{|m_{A,k}-m_{B,k}|}{\text{IQR}_{A,B,k}+\epsilon},
 \]
 
-where $\text{IQR}_{A,B,k}$ is a pooled interquartile range and $\epsilon$ avoids division by zero. The signed driver score favoring Group A over Group B is:
+where $\text{IQR}_{A,B,k}$ is the interquartile range of the combined distribution of feature $k$ across both groups (i.e., computed over the concatenation of all values from $\mathcal{G}_A$ and $\mathcal{G}_B$), and $\epsilon = 10^{-6}$ avoids division by zero. The signed driver score favoring Group A over Group B is:
 
 \[
 E_k^{A\leftarrow B}(x)=w_k\left(D_{B,k}(x)-D_{A,k}(x)\right).
@@ -242,7 +244,9 @@ Positive values indicate that feature $k$ brings the target image closer to Grou
 \subsubsection{Implementation}
 \label{code}
 
-The current implementation uses LangSAM\footnote{\url{https://github.com/luca-medeiros/lang-segment-anything}}, built on SAM, to segment facial regions from text prompts. The target regions include the face, nose, mouth, eyes, eyebrows, chin, and hair when available. Left and right components can be measured separately and then aggregated when a combined region is required. If a segmentation mask is missing or unreliable, the corresponding ratio is stored as missing rather than forcing an artificial value. This prevents one failed segmentation from invalidating the full vector while preserving uncertainty in downstream analysis.
+Prior to segmentation, each image is passed through a face detection step to localize the facial region and suppress background areas that could otherwise attract spurious mask assignments. The detected face region is cropped with a small contextual margin to retain adjacent structures such as the hairline and chin contour, which are relevant to several SI-FPM ratios. Images are processed at their original resolution without forced resizing, preserving the spatial information required for accurate polygon area computation. No facial alignment or landmark-based normalization is applied before segmentation, as the ratio formulation is scale-invariant and the segmentation model operates directly on the raw crop.
+
+The current implementation uses LangSAM\footnote{\url{https://github.com/luca-medeiros/lang-segment-anything}}, built on SAM, to segment facial regions from text prompts. The target regions include the face, nose, mouth, eyes, eyebrows, chin, and hair when available. Left and right eye and eyebrow regions are segmented independently and their areas are summed to produce a single bilateral measurement when a combined region is required. If a segmentation mask is missing or unreliable, the corresponding ratio is stored as missing rather than forcing an artificial value. This prevents one failed segmentation from invalidating the full vector while preserving uncertainty in downstream analysis.
 
 
 \section{Results and Discussion}
@@ -360,6 +364,12 @@ For each generated portrait, the audit panel combines the model output, the grou
 
 \FloatBarrier
 
+The four audit panels demonstrate SI-FPM applied to portraits generated under prompts involving two occupational contexts: a medical professional role and a domestic cleaning role. In each case, the metric computes group-proximity scores against the IMDB-WIKI reference distributions, operationalized as Women and Men prototype vectors.
+
+The Flux portrait depicts a female medical professional; SI-FPM assigns proximity scores of 0.75 (Women) and 0.64 (Men), correctly placing the image closer to the Women reference group with a gap of 0.11. The Gemini portrait depicts a female domestic worker in a household setting; SI-FPM assigns 0.51 (Women) and 0.26 (Men), a gap of 0.25 indicating a more pronounced proximity to the Women reference distribution. The GPT portrait depicts a male medical professional; SI-FPM assigns 0.59 (Women) and 0.80 (Men), correctly assigning the image to the Men group with a gap of 0.21. The SDXL portrait depicts a male domestic worker; SI-FPM assigns 0.36 (Women) and 0.79 (Men), the largest gap among the four panels (0.43), reflecting the most unambiguous group-proximity assignment in this case study.
+
+Several observations emerge from this comparison. First, SI-FPM produces a directionally correct proximity assignment for all four generated portraits, without any labeled training signal from these images. Second, the magnitude of the score gap varies considerably across models and prompts (0.11 to 0.43), indicating that proximity confidence is not uniform and reflects how strongly each generated image's proportional profile deviates from the midpoint between the two reference distributions. Third, the occupational framing of the portraits — medical professionals and domestic workers — reveals a cross-model pattern in which the medical role is depicted with a smaller group-proximity gap, while the domestic cleaning role produces larger gaps in both model outputs. This pattern is consistent with prior findings on stereotyped gender representations in generative models and illustrates the type of proportional evidence that a named, feature-level audit can surface. The current panels display proximity scores only; feature-level driver annotations will be incorporated in the final version to complete the audit output with a proportional basis for each decision.
+
 
 \subsection{Discussion and Limitations}
 \label{discussion}
@@ -368,7 +378,7 @@ SI-FPM offers a transparent alternative to purely embedding-based image comparis
 
 At the same time, interpretability does not eliminate ethical risk. A transparent metric can still be misused if its outputs are framed as evidence of inherent social or biological categories. For this reason, SI-FPM should be restricted to controlled research and auditing contexts in which the reference groups, labels, datasets, and limitations are explicitly documented. In particular, results involving male/female labels should be interpreted as proximity to dataset annotations, not as inference of gender identity or biological sex.
 
-Several technical limitations must also be considered. First, SI-FPM depends on segmentation quality. Incorrect or incomplete masks can distort area ratios, particularly for small regions such as eyes or eyebrows. Second, facial expression, pose, lighting, occlusion, image resolution, and model-generated artifacts may affect the segmented regions. Third, pairwise ratios based on areas capture only a subset of facial geometry; distances, angles, symmetry, and spatial relations may provide complementary information. Fourth, the current group-level experiments are limited to binary dataset labels. Future work should evaluate broader and more carefully documented reference structures, including cases where labels are unavailable, uncertain, or not reducible to binary categories.
+Several technical limitations must also be considered. First, SI-FPM depends on segmentation quality. Incorrect or incomplete masks can distort area ratios, particularly for small regions such as eyes or eyebrows. In the group-level experiment, \texttt{Eyes\_vs\_Face} and \texttt{Eyes\_vs\_Nose} showed the widest distributional spread across both reference groups, which may partially reflect variability in eye segmentation quality in addition to genuine proportional differences. Images with low resolution, strong occlusion, or extreme pose are the most susceptible to this error mode, and their ratio vectors are stored with missing values rather than forced estimates. Second, imaging conditions — including expression, pose, lighting, and model-generated rendering artifacts — affect the segmented region boundaries even when the underlying facial proportions are stable. The cross-dataset heatmap revealed that some cross-individual similarity values were relatively high (e.g., Jackie Chan and Ayrton Senna at 0.46--0.53), which may reflect shared imaging conditions or expression states in the available image sets rather than genuinely similar facial proportions. Third, pairwise area ratios capture only one dimension of facial geometry. The group-level analysis showed that \texttt{Nose\_vs\_Face} carried little discriminative information in the IMDB-WIKI distributions, suggesting that area alone may be insufficient to characterize some proportional dimensions; distance-based or symmetry-based features may provide complementary evidence. Fourth, the current experiments are limited to binary dataset labels. The generated-image case study used the same two reference prototypes across all four models and both occupational prompts, which constrains the scope of the audit. Future work should evaluate reference structures that are broader, non-binary, and more carefully documented, including cases where labels are unavailable, uncertain, or not reducible to a two-group comparison.
 
 Future ethnicity-related applications require additional care. Such analyses should be performed only when the research question is explicitly about aggregate representation auditing, the reference labels are ethically justified, and the results are framed as dataset- and context-specific. SI-FPM is not a method for inferring ethnicity from a face. Its appropriate role is to help researchers inspect whether visual systems produce measurable and explainable representation patterns under predefined audit conditions.
 
