@@ -82,8 +82,57 @@ FEATURE_NAMES = [
 
 # ── segmentação ────────────────────────────────────────────────────────────
 
+def _find_bpe_path() -> str | None:
+    """
+    pkg_resources.resource_filename falha quando o pacote sam3 é clonado
+    sem instalação adequada (module.__file__ == None).
+    Procura o arquivo BPE diretamente no sistema de arquivos.
+    """
+    import sam3 as _sam3_pkg
+    import importlib, glob
+
+    # 1. tenta via __file__ do pacote (funciona se pip install -e . rodou ok)
+    pkg_file = getattr(_sam3_pkg, "__file__", None)
+    if pkg_file:
+        base = Path(pkg_file).parent
+        candidates = list(base.rglob("bpe_simple_vocab_16e6.txt.gz"))
+        if candidates:
+            return str(candidates[0])
+
+    # 2. busca a partir do diretório de trabalho e de /workspace
+    search_roots = [Path.cwd(), Path("/workspace"), Path(__file__).parent]
+    for root in search_roots:
+        candidates = list(root.rglob("bpe_simple_vocab_16e6.txt.gz"))
+        if candidates:
+            return str(candidates[0])
+
+    return None
+
+
 def build_model():
-    model = build_sam3_image_model()
+    bpe_path = _find_bpe_path()
+    if bpe_path:
+        print(f"BPE encontrado: {bpe_path}")
+        import inspect
+        sig = inspect.signature(build_sam3_image_model)
+        if "bpe_path" in sig.parameters:
+            model = build_sam3_image_model(bpe_path=bpe_path)
+        else:
+            # versão mais antiga: patch no pkg_resources antes de chamar
+            import sam3.model_builder as _mb
+            import pkg_resources as _pr
+            _orig = _pr.resource_filename
+            def _patched(pkg, path):
+                if "bpe_simple" in path:
+                    return bpe_path
+                return _orig(pkg, path)
+            _pr.resource_filename = _patched
+            model = build_sam3_image_model()
+            _pr.resource_filename = _orig
+    else:
+        print("AVISO: bpe_simple_vocab_16e6.txt.gz não encontrado — tentando sem patch.")
+        model = build_sam3_image_model()
+
     processor = Sam3Processor(model)
     model.eval()
     if torch.cuda.is_available():
