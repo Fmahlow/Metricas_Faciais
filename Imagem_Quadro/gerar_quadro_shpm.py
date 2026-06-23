@@ -639,42 +639,128 @@ def make_lollipop_plot(
     return image
 
 
-def make_graph_box(
-    graph: Image.Image,
+def read_class_assignments(path: Path) -> dict[str, dict[str, str]]:
+    """Le class_assignments.csv -> {model: {assigned, ground_truth, correct, score_female, score_male}}"""
+    assignments: dict[str, dict[str, str]] = {}
+    if not path.exists():
+        return assignments
+    with path.open(newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            model = row.get("model", "").strip()
+            if model:
+                assignments[model] = {
+                    "assigned":     row.get("assigned", "").strip(),
+                    "ground_truth": row.get("ground_truth", "").strip(),
+                    "correct":      row.get("correct", "").strip(),
+                    "score_female": row.get("score_female", "").strip(),
+                    "score_male":   row.get("score_male", "").strip(),
+                }
+    return assignments
+
+
+def make_class_badge(
+    assignment: dict[str, str],
+    width: int,
+    bg_opacity: float,
     padding: int,
     radius: int,
-    bg_opacity: float,
-    lollipop: Image.Image | None = None,
 ) -> Image.Image:
-    padding = max(0, padding)
-    radius = max(0, radius)
-    bg_opacity = min(max(bg_opacity, 0.0), 1.0)
-    gap = 16 if lollipop else 0
-    content_width = graph.width + (gap + lollipop.width if lollipop else 0)
-    content_height = max(graph.height, lollipop.height if lollipop else 0)
+    """
+    Draws a 'Assigned: Female ✓' badge.
+    Green ✓ if correct, red ✗ if wrong.
+    """
+    assigned = assignment.get("assigned", "?")
+    correct  = assignment.get("correct", "").lower() == "yes"
+    mark     = "✓" if correct else "✗"   # ✓ or ✗
+    mark_color = (34, 139, 34, 255) if correct else (200, 40, 40, 255)
 
-    box = Image.new(
-        "RGBA",
-        (
-            content_width + 2 * padding,
-            content_height + 2 * padding,
-        ),
-        (0, 0, 0, 0),
-    )
-    draw = ImageDraw.Draw(box, "RGBA")
-    rect = (0, 0, box.width - 1, box.height - 1)
+    sf = assignment.get("score_female", "")
+    sm = assignment.get("score_male", "")
+    score_line = f"Female {float(sf):.3f}  |  Male {float(sm):.3f}" if sf and sm else ""
+
+    label_font  = load_font(36)
+    assign_font = load_font(52)
+    mark_font   = load_font(64)
+    score_font  = load_font(28)
+
+    # measure heights
+    tmp = Image.new("RGBA", (1, 1))
+    d   = ImageDraw.Draw(tmp)
+    lh  = d.textbbox((0,0), "Assigned:", label_font)[3]
+    ah  = d.textbbox((0,0), assigned, assign_font)[3]
+    mh  = d.textbbox((0,0), mark, mark_font)[3]
+    sh  = d.textbbox((0,0), score_line, score_font)[3] if score_line else 0
+
+    content_h = lh + 8 + max(ah, mh) + (12 + sh if score_line else 0)
+    img_h = content_h + 2 * padding
+    img_w = width
+
+    img  = Image.new("RGBA", (img_w, img_h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img, "RGBA")
     draw.rounded_rectangle(
-        rect,
+        (0, 0, img_w - 1, img_h - 1),
         radius=radius,
         fill=(255, 255, 255, round(255 * bg_opacity)),
     )
-    graph_x = padding
-    graph_y = padding + (content_height - graph.height) // 2
-    box.alpha_composite(graph, (graph_x, graph_y))
+
+    # "Assigned:" label
+    draw_centered_text(draw, (0, padding, img_w, padding + lh), "Assigned:", label_font, (80, 80, 80, 220))
+
+    y_row = padding + lh + 8
+    row_h = max(ah, mh)
+
+    # assigned class name
+    ab = draw.textbbox((0, 0), assigned, assign_font)
+    aw = ab[2] - ab[0]
+    mbb = draw.textbbox((0, 0), mark, mark_font)
+    mw  = mbb[2] - mbb[0]
+    gap = 14
+    total_w = aw + gap + mw
+    x_start = (img_w - total_w) // 2
+
+    draw.text(
+        (x_start, y_row + (row_h - ah) // 2 - ab[1]),
+        assigned, font=assign_font, fill=(0, 0, 0, 255),
+    )
+    draw.text(
+        (x_start + aw + gap, y_row + (row_h - mh) // 2 - mbb[1]),
+        mark, font=mark_font, fill=mark_color,
+    )
+
+    # score line
+    if score_line:
+        y_score = y_row + row_h + 12
+        draw_centered_text(
+            draw, (0, y_score, img_w, y_score + sh),
+            score_line, score_font, (90, 90, 90, 200),
+        )
+
+    return img
+
+
+def make_overlay_box(
+    badge: Image.Image,
+    lollipop: Image.Image | None,
+    padding: int,
+    radius: int,
+    bg_opacity: float,
+) -> Image.Image:
+    """Combina badge de classe e lollipop num único box transparente."""
+    gap = 20 if lollipop else 0
+    content_w = badge.width + (gap + lollipop.width if lollipop else 0)
+    content_h = max(badge.height, lollipop.height if lollipop else 0)
+
+    box  = Image.new("RGBA", (content_w + 2 * padding, content_h + 2 * padding), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(box, "RGBA")
+    draw.rounded_rectangle(
+        (0, 0, box.width - 1, box.height - 1),
+        radius=radius,
+        fill=(255, 255, 255, round(255 * bg_opacity)),
+    )
+    box.alpha_composite(badge,    (padding, padding + (content_h - badge.height) // 2))
     if lollipop:
-        lollipop_x = padding + graph.width + gap
-        lollipop_y = padding + (content_height - lollipop.height) // 2
-        box.alpha_composite(lollipop, (lollipop_x, lollipop_y))
+        box.alpha_composite(lollipop, (padding + badge.width + gap,
+                                       padding + (content_h - lollipop.height) // 2))
     return box
 
 
@@ -696,49 +782,47 @@ def draw_model_label(panel: Image.Image, label: str, index: int) -> None:
 
 def compose_panel(
     base_path: Path,
-    graph_path: Path,
     label: str,
     index: int,
+    assignment: dict[str, str] | None,
     evidence: list[dict[str, str | float]] | None,
-    overlay_scale: float,
     overlay_margin: int,
     graph_bg_opacity: float,
     graph_box_padding: int,
     graph_box_radius: int,
     lollipop_limit: float,
     draw_labels: bool,
+    badge_width: int = 320,
 ) -> Image.Image:
     base = Image.open(base_path).convert("RGBA")
-    graph = recolor_white_graph_text(trim_graph(Image.open(graph_path)))
-
-    graph_width = round(base.width * overlay_scale)
-    graph = resize_to_width(graph, graph_width)
-
-    max_graph_height = round(base.height * 0.34)
-    if graph.height > max_graph_height:
-        graph = graph.resize(
-            (round(graph.width * max_graph_height / graph.height), max_graph_height),
-            Image.Resampling.LANCZOS,
-        )
 
     lollipop = None
     if evidence:
         lollipop = make_lollipop_plot(
             evidence_rows=evidence,
-            width=max(510, round(graph.width * 1.05)),
+            width=max(510, badge_width + 100),
             limit=lollipop_limit,
         )
 
-    graph_box = make_graph_box(
-        graph=graph,
+    badge = make_class_badge(
+        assignment=assignment or {},
+        width=badge_width,
+        bg_opacity=0.0,   # sem fundo proprio; o box externo ja tem
+        padding=12,
+        radius=0,
+    )
+
+    overlay = make_overlay_box(
+        badge=badge,
+        lollipop=lollipop,
         padding=graph_box_padding,
         radius=graph_box_radius,
         bg_opacity=graph_bg_opacity,
-        lollipop=lollipop,
     )
-    x = round((base.width - graph_box.width) / 2)
-    y = base.height - graph_box.height - overlay_margin
-    base.alpha_composite(graph_box, (x, y))
+
+    x = round((base.width - overlay.width) / 2)
+    y = base.height - overlay.height - overlay_margin
+    base.alpha_composite(overlay, (x, y))
 
     if draw_labels:
         draw_model_label(base, label, index)
@@ -755,17 +839,17 @@ def make_grid(
     if not panels:
         raise ValueError("Nenhum painel foi gerado.")
 
-    panel_width = max(panel.width for panel in panels)
+    panel_width  = max(panel.width  for panel in panels)
     panel_height = max(panel.height for panel in panels)
     rows = math.ceil(len(panels) / cols)
 
-    canvas_width = cols * panel_width + (cols - 1) * gutter + 2 * outer_margin
+    canvas_width  = cols * panel_width  + (cols - 1) * gutter + 2 * outer_margin
     canvas_height = rows * panel_height + (rows - 1) * gutter + 2 * outer_margin
     canvas = Image.new("RGB", (canvas_width, canvas_height), "white")
 
     for index, panel in enumerate(panels):
         row, col = divmod(index, cols)
-        x = outer_margin + col * (panel_width + gutter)
+        x = outer_margin + col * (panel_width  + gutter)
         y = outer_margin + row * (panel_height + gutter)
         canvas.paste(panel.convert("RGB"), (x, y))
 
@@ -773,10 +857,17 @@ def make_grid(
 
 
 def main() -> None:
-    args = parse_args()
-    input_dir = args.input_dir.resolve()
-    output = args.output.resolve()
-    evidence_data = load_evidence_data(args)
+    args       = parse_args()
+    input_dir  = args.input_dir.resolve()
+    output     = args.output.resolve()
+
+    evidence_data   = load_evidence_data(args)
+    assignments_csv = input_dir / "class_assignments.csv"
+    assignments     = read_class_assignments(assignments_csv)
+
+    if not assignments:
+        print(f"AVISO: {assignments_csv} nao encontrado ou vazio. "
+              "Rode extract_generated_features.py primeiro para obter valores reais.")
 
     panels = []
     for index, model in enumerate(MODEL_ORDER):
@@ -785,14 +876,12 @@ def main() -> None:
             raise FileNotFoundError(f"Pasta do modelo nao encontrada: {model_dir}")
 
         base_path = find_base_image(model_dir, model)
-        graph_path = find_graph_image(model_dir)
         panel = compose_panel(
             base_path=base_path,
-            graph_path=graph_path,
             label=model,
             index=index,
+            assignment=assignments.get(model),
             evidence=evidence_data.get(model),
-            overlay_scale=args.overlay_scale,
             overlay_margin=args.overlay_margin,
             graph_bg_opacity=args.graph_bg_opacity,
             graph_box_padding=args.graph_box_padding,
