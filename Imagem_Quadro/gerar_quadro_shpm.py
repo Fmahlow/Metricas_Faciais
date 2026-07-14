@@ -426,13 +426,13 @@ def find_base_image(model_dir: Path, model: str) -> Path:
 
 
 def find_graph_image(model_dir: Path) -> Path:
-    transparent_graphs = sorted(model_dir.glob("shpm_transparente*.png"))
-    if transparent_graphs:
-        return transparent_graphs[0]
-
     bars_only = model_dir / "shpm_bars_only.png"
     if bars_only.exists():
         return bars_only
+
+    transparent_graphs = sorted(model_dir.glob("shpm_transparente*.png"))
+    if transparent_graphs:
+        return transparent_graphs[0]
 
     raise FileNotFoundError(f"Nenhum grafico SHPM encontrado em {model_dir}")
 
@@ -639,6 +639,83 @@ def make_lollipop_plot(
     return image
 
 
+def make_shpm_bar_plot(
+    assignment: dict[str, str],
+    width: int,
+    max_y: float = 0.8,
+) -> Image.Image | None:
+    try:
+        score_female = float(assignment.get("score_female", ""))
+        score_male = float(assignment.get("score_male", ""))
+    except ValueError:
+        return None
+
+    max_y = max(max_y, score_female, score_male)
+    height = 286
+    image = Image.new("RGBA", (width, height), (255, 255, 255, 245))
+    draw = ImageDraw.Draw(image, "RGBA")
+
+    axis_font = load_font(24)
+    label_font = load_font(30)
+    value_font = load_font(24)
+    y_label_font = load_font(34)
+
+    plot_left = 84
+    plot_right = width - 18
+    plot_top = 22
+    plot_bottom = height - 46
+    plot_height = plot_bottom - plot_top
+    bar_width = max(42, round((plot_right - plot_left) * 0.23))
+    centers = (
+        plot_left + round((plot_right - plot_left) * 0.28),
+        plot_left + round((plot_right - plot_left) * 0.73),
+    )
+    colors = ((242, 217, 143, 255), (123, 201, 188, 255))
+    scores = (score_female, score_male)
+    labels = ("Women", "Men")
+
+    for tick in (0.0, 0.2, 0.4, 0.6, 0.8):
+        if tick > max_y + 1e-9:
+            continue
+        y = plot_bottom - (tick / max_y) * plot_height
+        tick_label = f"{tick:.1f}"
+        bbox = draw.textbbox((0, 0), tick_label, font=axis_font)
+        draw.text((plot_left - 10 - (bbox[2] - bbox[0]), y - 12), tick_label, font=axis_font, fill=(0, 0, 0, 255))
+
+    draw.line((plot_left, plot_top, plot_left, plot_bottom), fill=(0, 0, 0, 255), width=3)
+    draw.line((plot_left, plot_bottom, plot_right, plot_bottom), fill=(0, 0, 0, 255), width=3)
+
+    for center, score, color, label in zip(centers, scores, colors, labels):
+        bar_top = plot_bottom - (score / max_y) * plot_height
+        draw.rectangle(
+            (center - bar_width / 2, bar_top, center + bar_width / 2, plot_bottom),
+            fill=color,
+            outline=(0, 0, 0, 180),
+            width=2,
+        )
+        value_text = f"{score:.2f}"
+        value_bbox = draw.textbbox((0, 0), value_text, font=value_font)
+        value_x = center - (value_bbox[2] - value_bbox[0]) / 2
+        value_y = max(plot_top, bar_top - 30)
+        draw.text((value_x, value_y), value_text, font=value_font, fill=(0, 0, 0, 255))
+
+        label_bbox = draw.textbbox((0, 0), label, font=label_font)
+        draw.text(
+            (center - (label_bbox[2] - label_bbox[0]) / 2, plot_bottom + 4),
+            label,
+            font=label_font,
+            fill=(0, 0, 0, 255),
+        )
+
+    y_label = "SHPM"
+    y_label_image = Image.new("RGBA", (120, 50), (0, 0, 0, 0))
+    y_draw = ImageDraw.Draw(y_label_image)
+    y_draw.text((0, 0), y_label, font=y_label_font, fill=(0, 0, 0, 255))
+    y_label_image = y_label_image.rotate(90, expand=True)
+    image.alpha_composite(y_label_image, (12, round((height - y_label_image.height) / 2)))
+    return image
+
+
 def read_class_assignments(path: Path) -> dict[str, dict[str, str]]:
     """Le class_assignments.csv -> {model: {assigned, ground_truth, correct, score_female, score_male}}"""
     assignments: dict[str, dict[str, str]] = {}
@@ -739,16 +816,16 @@ def make_class_badge(
 
 
 def make_overlay_box(
-    badge: Image.Image,
+    shpm_graph: Image.Image,
     lollipop: Image.Image | None,
     padding: int,
     radius: int,
     bg_opacity: float,
 ) -> Image.Image:
-    """Combina badge de classe e lollipop num único box transparente."""
+    """Combina o grafico SHPM e o lollipop num unico box transparente."""
     gap = 20 if lollipop else 0
-    content_w = badge.width + (gap + lollipop.width if lollipop else 0)
-    content_h = max(badge.height, lollipop.height if lollipop else 0)
+    content_w = shpm_graph.width + (gap + lollipop.width if lollipop else 0)
+    content_h = max(shpm_graph.height, lollipop.height if lollipop else 0)
 
     box  = Image.new("RGBA", (content_w + 2 * padding, content_h + 2 * padding), (0, 0, 0, 0))
     draw = ImageDraw.Draw(box, "RGBA")
@@ -757,9 +834,9 @@ def make_overlay_box(
         radius=radius,
         fill=(255, 255, 255, round(255 * bg_opacity)),
     )
-    box.alpha_composite(badge,    (padding, padding + (content_h - badge.height) // 2))
+    box.alpha_composite(shpm_graph, (padding, padding + (content_h - shpm_graph.height) // 2))
     if lollipop:
-        box.alpha_composite(lollipop, (padding + badge.width + gap,
+        box.alpha_composite(lollipop, (padding + shpm_graph.width + gap,
                                        padding + (content_h - lollipop.height) // 2))
     return box
 
@@ -782,6 +859,7 @@ def draw_model_label(panel: Image.Image, label: str, index: int) -> None:
 
 def compose_panel(
     base_path: Path,
+    graph_path: Path,
     label: str,
     index: int,
     assignment: dict[str, str] | None,
@@ -795,6 +873,12 @@ def compose_panel(
     badge_width: int = 320,
 ) -> Image.Image:
     base = Image.open(base_path).convert("RGBA")
+    shpm_graph = make_shpm_bar_plot(assignment or {}, width=min(390, round(base.width * 0.38)))
+    if shpm_graph is None:
+        shpm_graph = trim_graph(Image.open(graph_path))
+        if shpm_graph.getchannel("A").getextrema()[0] < 255:
+            shpm_graph = recolor_white_graph_text(shpm_graph)
+        shpm_graph = resize_to_width(shpm_graph, min(390, round(base.width * 0.38)))
 
     lollipop = None
     if evidence:
@@ -804,16 +888,8 @@ def compose_panel(
             limit=lollipop_limit,
         )
 
-    badge = make_class_badge(
-        assignment=assignment or {},
-        width=badge_width,
-        bg_opacity=0.0,   # sem fundo proprio; o box externo ja tem
-        padding=12,
-        radius=0,
-    )
-
     overlay = make_overlay_box(
-        badge=badge,
+        shpm_graph=shpm_graph,
         lollipop=lollipop,
         padding=graph_box_padding,
         radius=graph_box_radius,
@@ -876,8 +952,10 @@ def main() -> None:
             raise FileNotFoundError(f"Pasta do modelo nao encontrada: {model_dir}")
 
         base_path = find_base_image(model_dir, model)
+        graph_path = find_graph_image(model_dir)
         panel = compose_panel(
             base_path=base_path,
+            graph_path=graph_path,
             label=model,
             index=index,
             assignment=assignments.get(model),

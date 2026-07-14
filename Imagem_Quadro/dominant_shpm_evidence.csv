@@ -1,13 +1,13 @@
 model,metric,evidence,predicted_group,notes
-Flux,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-Flux,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-Flux,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-GPT,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-GPT,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-GPT,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-Gemini,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-Gemini,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-Gemini,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-SDXL,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-SDXL,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
-SDXL,,,,evidence < 0 favorece Female; evidence > 0 favorece Male
+Flux,hair_vs_nose,-4.9740,Female,computed by recompute_paper_results.py
+Flux,hair_vs_face,-3.6210,Female,computed by recompute_paper_results.py
+Flux,nose_vs_hair,-0.9329,Female,computed by recompute_paper_results.py
+GPT,nose_vs_hair,3.5061,Male,computed by recompute_paper_results.py
+GPT,face_vs_hair,2.7537,Male,computed by recompute_paper_results.py
+GPT,nose_vs_l_eye,1.7035,Male,computed by recompute_paper_results.py
+Gemini,hair_vs_nose,-2.8280,Female,computed by recompute_paper_results.py
+Gemini,hair_vs_face,-1.9557,Female,computed by recompute_paper_results.py
+Gemini,face_vs_l_eye,1.0442,Male,computed by recompute_paper_results.py
+SDXL,nose_vs_hair,1.7694,Male,computed by recompute_paper_results.py
+SDXL,nose_vs_l_eye,1.4552,Male,computed by recompute_paper_results.py
+SDXL,nose_vs_r_eye,1.4049,Male,computed by recompute_paper_results.py

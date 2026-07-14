@@ -1,0 +1,5 @@
+model,score_female,score_male,assigned,ground_truth,correct
+Flux,0.4752,0.3118,Female,Female,yes
+GPT,0.1712,0.3237,Male,Male,yes
+Gemini,0.3895,0.3378,Female,Female,yes
+SDXL,0.2176,0.3371,Male,Male,yes

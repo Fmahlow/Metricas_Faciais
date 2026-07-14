@@ -1,0 +1,3 @@
+feature_configuration,feature_count,n,female_n,male_n,mean_accuracy,std_accuracy
+All 30 features,30,1634.0,869.0,765.0,80.53957711862817,1.4921595593818648
+No-hair features,20,1634.0,869.0,765.0,71.72660925686196,1.046957800291401
